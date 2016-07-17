@@ -1,111 +1,143 @@
-import java.util.Random;
-
+import java.io.IOException;
 public class Lobby {
   
 	
 //build our player lists.	
-private String[][] f2pCasual; // Group ID 0
-private String[][] f2pComp;  // Group ID 1
-private String[][] p2pCasual;   // Group ID 2
-private String[][] p2pComp;    //Group ID 3
+private String[][] lobbyF2pCasual; // Group ID 0
+private String[][] lobbyF2pComp;  // Group ID 1
+private String[][] lobbyP2pCasual;   // Group ID 2
+private String[][] lobbyP2pComp;    //Group ID 3
 
 private PlayerData Pd;
 
 
-public Lobby(){
-	pupulateData();
-	//loop the game mode groups and start full lobbies.
-	for (int i = 0; i == 3; i++){
-		
-		//Load each game lobby and check if it's null, it isn't, then we have a game lobby of 25+ people.
-		if (GameLobby(i) != null){ 
-			String[][] lmsGroup = StartAGame(GameLobby(i));
-			if (lmsGroup != null){
-				worldHopper(lmsGroup);
-			}
-				
-		}
-		
+public Lobby(int frequency) throws IOException, InterruptedException{
+	Pd = new PlayerData();
+	//We want the lobby open forever.
+	while (System.in.available() == 0) {
+	
+	//Start getting our players. These are just randomly generated
+	//But the system can take anything as long as the inputed user data is a String Array.
+	String[][] player = Pd.generatePlayer(frequency);
+	for (int i=0; i<player.length; i++){
+		Pd.addPlayer(player[i]);
 	}
+	/*Runs our data handler.
+	 *Since this is only a proof of concept, the data will be split
+	 *into 4 groups. F2P casual, F2P comp, P2p casual, P2p comp.
+	 *This does not include an ELO system but it's possible to add with a bit more time 
+	 */
+	pupulateData();
+	
+	/*
+	 * There's 4 groups in total, so we want to loop them
+	 *
+	 */
+		for (int i = 0; i <= 3; i++){
+
+			// If gamelobby(game group id) is null, then the group contains less than 25 people
+			// however, if it's not null and has data, it has 25 or more people
+			if (GameLobby(i) != null){ 
+			
+				//Now we can get our first 25 players and put them together
+				String[][] lmsGroup = StartAGame(GameLobby(i));
+				if (lmsGroup != null){
+					//now the group is together, we can now start to move the players 
+					//to a new world to play together.
+					worldHopper(lmsGroup);
+				} 
+			
+			}
+		
+		}
 	
 	
+		System.out.println("--Lobby count--" );
+
+		int f2pcasualC = (lobbyF2pCasual != null) ? lobbyF2pCasual.length : 0;
+		System.out.println("F2P casual has: " + f2pcasualC);
+
+		int f2pcompC = (lobbyF2pComp != null) ? lobbyF2pComp.length : 0;
+		System.out.println("F2p Comp has: " +f2pcompC );
 	
+		int p2pcasualC = (lobbyP2pCasual != null) ? lobbyP2pCasual.length : 0;
+		System.out.println("P2P casual has:  " +p2pcasualC );
+	
+		int p2pcompC = (lobbyP2pComp != null) ? lobbyP2pComp.length : 0;
+		System.out.println("P2p Comp has: " +p2pcompC );
+		
+		System.out.println("Games started: "+groupsHopped);
+	
+		Thread.sleep(600);
+	}
 	
 }
 
-/*
- * 
- * PopulatData function
- * Purpose: Filter all players into 4 groups 
- * so we can get games ASAP / more random if there's a lot of players / qued system
- * 
+
+public int groupsHopped=0;
+
+/*Function: worldHopper
+ * Usage: worldHopper(2D array player group data)
+ * Purpose: Move the lobby to the same world.
  */
 
-
-private static final int[][] worlds = {
-		
-		//f2p worlds
-		{
-			301,108,316,326,335,381,382,383,384,385,293,294
-		},
-		
-		//p2p worlds
-		{
-			302,303,304,305,306,307,309,310,311,312,313,314,318,319,320,322,327,
-			328,329,330,333,334,336,338,341,342,343,344,346,349,350,351,352,353,
-			354,357,358,359,360,361,362,365,366,367,368,369,370,373,375,377
-			
-		}
-};
-private String[] playerHopped;
 private void worldHopper(String[][] group){
 	/*TODO:
 	 *This needs to be the real RS code for hoppinh a person to another world.
 	 *Just whatever function is called on 'Quick Hop'
 	*/
-	
-	Random rand = new Random(); 
+	 
 	int world = 0;
 	switch(group[0][4]){
 	case("Member"):
-		 world = rand.nextInt(worlds[1].length);
+		 world = Pd.getRandomWorld(1);
 		break;
-	case("F2p"):
-		world = rand.nextInt(worlds[0].length);
+	case("F2P"):
+		world = Pd.getRandomWorld(0);
 		break;
 	}
-	int start = (playerHopped.length > 0)? playerHopped.length : 0;
 	for (int i = 0; i<group.length; i++){
-		//for simulation purposes, we are just going to store the player id, prev world and new world in an array
-		playerHopped[start+i] = group[i][0]+"/"+group[i][3]+"/"+world; 
+		
 		System.out.println("Player hopped: "+group[i][0]+"/"+group[i][3]+"/"+world);
+		//Move the player to a new world
+	
 	}
-	
-	
+	groupsHopped++;
 	
 }
 
-
+/*
+ * Function GameLobby
+ * Usage: GameLobby(int group ID)
+ * Purpose: Finds if the group has 25+ players in it
+ * If it does, return the group.
+ * Else, just return null
+ * 
+ */
 private String[][] GameLobby(int groupId){
+	
+	
 	
 	String[][] group = null;
 	
 	switch (groupId){
 	case 0:
-		group = f2pCasual;
+		
+		group = lobbyF2pCasual;
 		break;
 	case 1:
-		group = f2pComp;
+		group = lobbyF2pComp;
 		break;
 	case 2:
-		group = p2pCasual;
+		group = lobbyP2pCasual;
 		break;
 	case 3:
-		group = p2pComp;
+		group = lobbyP2pComp;
 		break;
 	
 	}
 	if(group != null){
+		//here is where we check if a lobby is ready
 		if (group.length >=25){
 			return group;
 		} 
@@ -114,15 +146,23 @@ private String[][] GameLobby(int groupId){
 	return null;
 }
 
-@SuppressWarnings("null") //It's BS, Will never get to this stage and be null.
+
+/*
+ * Function: StartAGame(2D Array player data)
+ * Purpose: Gets the group of 25 people and puts them in a group
+ * this is where we call the remove function, to remove them from the
+ * lobby list
+ * 
+ */
 private String[][] StartAGame(String[][] group){
 	
 	if(group != null){
 		
 		// if we get here, that means we have 25 players or more in our group, therefore meeting the requirements
 		//now we get the first 25 of the group and throw them in a game together, we are creating the array here.
-		String[][] lmsGroup = null;
-		for(int i=0; i==25; i++){
+	
+		String[][] lmsGroup = new String[25][4];
+		for(int i=0; i<25; i++){
 			//add them to the group of people to play together
 			lmsGroup[i] = group[i]; 
 			//remove them from the player list.
@@ -135,47 +175,124 @@ private String[][] StartAGame(String[][] group){
 	return null;
 }
 
-
+/*
+ * Function: populateData
+ * Usage: Call it when you need a group refresh
+ * Purpose: Filters all the players and assigns them to a group
+ */
 private void pupulateData(){
-	p2pComp =null;
-	f2pComp = null;
-	p2pCasual = null;
-	f2pCasual = null;
-	//counters
-	int countF2pC = 0,countF2pCp = 0,countP2pC = 0,countP2pCp = 0;
-	
+
+	//Garbage the old stuff
+	lobbyF2pCasual = null;
+	lobbyF2pComp =  null;
+	lobbyP2pCasual = null;
+	lobbyP2pComp =  null;
+
+	//Start looping thru all the players searching
 	for (int i=0; i<Pd.PlayerData.length; i++){
-		//Start pulling the current list
-		switch(Pd.PlayerData[i][2]){
-			case ("Competitive"):
-				if (Pd.PlayerData[i][4] == "Member"){ 
-					
+		//null check
+		if(Pd.PlayerData[i][2] != null){
+			//See if the player is in competitive group
+			if (Pd.PlayerData[i][2].contains("Comp")){
+				//Is member?
+				if (Pd.PlayerData[i][4].contains("Mem")){ 
+					//Send the player to group id 3 with this data.
+					updateGroup(3,Pd.PlayerData[i]);
+				//Is f2p?	
+				}else{
+					//assign player to group
+					updateGroup(1,Pd.PlayerData[i]);
+				}
+			//see if the player is in the casual group
+			}else if  (Pd.PlayerData[i][2].contains("Cas")){
+				//Is member?
+				if(Pd.PlayerData[i][4].contains("Mem")){
 					//assign a player to group
-					p2pComp[countP2pCp] = Pd.PlayerData[i];
-					countP2pCp++;
+					updateGroup(2,Pd.PlayerData[i]);
+				//Is F2p?
 				}else{
 					//assign a player to group
-					f2pComp[countF2pCp] = Pd.PlayerData[i];
-					countF2pCp++;
-				}
-				
-				break;
-			case ("Casual"):
-				if(Pd.PlayerData[i][4] == "Member"){
-					//assign a player to group
-					p2pCasual[countP2pC] = Pd.PlayerData[i];
-					countP2pC++;
-				}else{
-					//assign a player to group
-					f2pCasual[countF2pC] = Pd.PlayerData[i];
-					countP2pC++;
-				}
+					updateGroup(0,Pd.PlayerData[i]);
+				}			
+			
+			}
 		}
-		
 	}
 	
 }
 
+/*
+ * Function: updateGroup
+ * Usage: Takes group ID, player data.
+ * Purpose: Just adds the user to the array group.
+ * 
+ */
+	private void updateGroup(int id, String[] pData){
+		String[][] newGroup;
+		int size = 0;
+		if(pData[0] != null){
+			switch(id){
+			case 0:
+				//Simple array addition in java.... This repeats 4 times.
+				//First get the size of the new array
+				size = (lobbyF2pCasual != null) ? lobbyF2pCasual.length :0;
+				//Make a new array with +1 of the size.
+				newGroup = new String[size+1][4];
+				//Add the last item onto the array
+				newGroup[size] = pData;
+				//fill in the data 0->the one we just added (last).
+				if(size != 0 ){
+					for (int i=0; i < size; i++){
+						newGroup[i] = lobbyF2pCasual[i];
+					}
+				}
+				//dispose + recreate our global array with new length
+				lobbyF2pCasual = new String[newGroup.length][4];
+				//Set the global array.
+				lobbyF2pCasual = newGroup;
+				break;
+			case 1:
+				size = (lobbyF2pComp  != null) ? lobbyF2pComp.length : 0;
+				newGroup = new String[size+1][5];
+				newGroup[size] = pData;
+				if(size != 0 ){
+				for (int i=0; i < size; i++){
+					newGroup[i] = lobbyF2pComp[i];
+				}
+				}
+				lobbyF2pComp = new String[newGroup.length-1][4];
+				lobbyF2pComp = newGroup;
+				break;
+			case 2:
+			    size = (lobbyP2pCasual  != null) ? lobbyP2pCasual.length :0;
+			    newGroup = new String[size+1][5];
+				newGroup[size] = pData;
+				if(size != 0 ){
+				for (int i=0; i < size; i++){
+					newGroup[i] = lobbyP2pCasual[i];
+				}
+				}
+				lobbyP2pCasual = new String[newGroup.length-1][4];
+				lobbyP2pCasual = newGroup;
+				break;
+			case 3:
+				size = (lobbyP2pComp  != null) ? lobbyP2pComp.length :0;
+				 newGroup = new String[size+1][5];
+				 newGroup[size] = pData;
+				if(size != 0 ){
+			      for (int i=0; i < size; i++){
+					  newGroup[i] = lobbyP2pComp[i];
+					 }
+					}
+				lobbyP2pComp = new String[newGroup.length][4];
+				lobbyP2pComp = newGroup;
+				break;
+			
+			}
+			
+		}
+		
+	}
 
 	
 }
